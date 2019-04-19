@@ -35,14 +35,20 @@ def extract_dns_servers(dnsfile):
             '(?:^|\b(?<!\.))(?:1?\d\d?|2[0-4]\d|25[0-5])(?:\.(?:1?\d\d?|2[0-4]\d|25[0-5])){3}(?=$|[^\w.])')
 
         line_count = 0
+        edge_count = 0
 
         for row in csv_reader:
             if line_count > 0:
                 if ip_pattern.match(row[CSV_COL_IP]) and str(row[CSV_COL_COUNTRY]) in EU_COUNTRIES_ISO:
-                    print(f'{row[CSV_COL_IP]},{row[CSV_COL_COUNTRY]}')
-                    check_nameserver_ip(row[CSV_COL_IP], TARGET_HOSTNAME)
+                    mapped_ip = check_nameserver_ip(
+                        row[CSV_COL_IP], TARGET_HOSTNAME)
+                    if mapped_ip is not None:
+                        print(
+                            f'{row[CSV_COL_IP]},{row[CSV_COL_COUNTRY]},{mapped_ip}')
+                        edge_count += 1
+
             line_count += 1
-        print(f'Processed {line_count} lines.')
+        print(f'There are {edge_count} Edge IPs for this hostname in .')
 
 
 def check_nameserver_ip(dns_ip, hostname):
@@ -53,19 +59,21 @@ def check_nameserver_ip(dns_ip, hostname):
 
     resolver = dns.resolver.Resolver()
     resolver.nameservers = [socket.gethostbyname(dns_ip)]
+    resolver.timeout = 1
+    resolver.lifetime = 1
     try:
         for rdata in resolver.query(hostname, 'A'):
             a_records.append(str(rdata))
 
     except NoAnswer:
-        a_records = []
+        return None
     except NXDOMAIN:
-        a_records = []
+        return None
     except NoNameservers:
-        a_records = []
+        return None
     except Timeout:
-        a_records = []
-    print(','.join(a_records))
+        return None
+    return(a_records[0])
 
 
 if __name__ == "__main__":
