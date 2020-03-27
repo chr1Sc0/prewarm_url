@@ -1,0 +1,10 @@
+.DS_Store
+*.csv
+*.txt
+*.log
+*_orig*
+dsa_log_grabber.py
+gtmloggrabber.py
+imprewarm.py
+multithreading.py
+prewarm.sh

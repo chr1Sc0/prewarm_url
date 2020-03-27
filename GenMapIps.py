@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description='Process command line options.')
-    parser.add_argument('--hostname', action='store',
+    parser.add_argument('--hostname', '-d', action='store',
                         help='hostname to generate ghost maps from region.')
     # parser.add_argument('--region', '-r', action='store',
     #                    help = '[--region AM|EMEA|AP', default = 'EMEA')
