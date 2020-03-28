@@ -19,7 +19,6 @@ from urllib.parse import urlparse
 import shlex
 import subprocess
 # import multiprocessing
-import pprint
 
 
 FILENAME = "prewarm_urls.py"
@@ -160,9 +159,7 @@ if __name__ == "__main__":
     edgemaps = HostnameEdgeMaps(args.hostname, args.max_edges)
     edgemaps.generate_geo_edges('nameservers.csv')
 
-    # pp = pprint.PrettyPrinter()
-    # pp.pprint(edgemaps.get_all_maps())
-    print(edgemaps.get_all_maps())
+    # print(edgemaps.get_all_maps())
 
     # Declare cycle object from itertools to loop over the edge mapped IPs
     edge_maps_cycle = cycle(edgemaps.get_all_maps())
