@@ -39,7 +39,15 @@ EU_COUNTRIES_ISO = ['AL', 'AD', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ',
                     'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB', 'VA', 'RS']
 
 
-CURL_COMMAND = '''/usr/local/bin/curl -s -D - -o /dev/null -H "Pragma:akamai-x-get-extracted-values,akamai-x-cache-on,akamai-x-cache-remote-on,akamai-x-check-cacheable,akamai-x-get-cache-key,akamai-x-get-true-cache-key,akamai-x-get-request-id" '''
+CURL_COMMAND = 'curl -s -D - -o /dev/null \
+                --user-agent "akamai_prewarm" \
+                --header "Pragma:akamai-x-get-extracted-values, \
+                                 akamai-x-cache-on, \
+                                 akamai-x-cache-remote-on, \
+                                 akamai-x-check-cacheable, \
+                                 akamai-x-get-cache-key, \
+                                 akamai-x-get-true-cache-key, \
+                                 akamai-x-get-request-id" '
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -95,10 +103,6 @@ class HostnameEdgeMaps(object):
 
             csv_file.close()
 
-            pp = pprint.PrettyPrinter()
-
-            pp.pprint(edgemaps.get_all_maps())
-
 
 def get_ip_from_nameserver(hostname, dns_ip):
 
@@ -126,11 +130,13 @@ def do_curl(edge_ip, full_url):
 
     final_curl = " ".join(
         [CURL_COMMAND, "--connect-to ::" + edge_ip, full_url])
-    # print(final_curl)
     args = shlex.split(final_curl)
-    p = subprocess.Popen(args, universal_newlines=True)
-    output, error = p.communicate()
-    print(output)
+    try:
+        p = subprocess.Popen(args, universal_newlines=True)
+        output, error = p.communicate()
+    except FileNotFoundError:
+        print("curl command was not found")
+        exit(2)
 
 
 if __name__ == "__main__":
@@ -154,6 +160,10 @@ if __name__ == "__main__":
     edgemaps = HostnameEdgeMaps(args.hostname, args.max_edges)
     edgemaps.generate_geo_edges('nameservers.csv')
 
+    # pp = pprint.PrettyPrinter()
+    # pp.pprint(edgemaps.get_all_maps())
+    print(edgemaps.get_all_maps())
+
     # Declare cycle object from itertools to loop over the edge mapped IPs
     edge_maps_cycle = cycle(edgemaps.get_all_maps())
 
@@ -171,6 +181,6 @@ if __name__ == "__main__":
                 full_url = "https://" + args.hostname + "/" + fullpath
                 # get next edge mapped IP from all maps
                 ip_address = next(edge_maps_cycle)
-                print("Run do_curl with IP address {} and URL: {}".format(
-                    ip_address, full_url)
+                print("Running curl with Edge address {} and URL: {}".format(
+                    ip_address, full_url))
                 do_curl(ip_address, full_url)
