@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 
 import requests
-# import sys
+import sys
 import os
 # import logging
 import tempfile
@@ -131,8 +131,11 @@ def do_curl(edge_ip, full_url):
         [CURL_COMMAND, "--connect-to ::" + edge_ip, full_url])
     args = shlex.split(final_curl)
     try:
-        p = subprocess.Popen(args, universal_newlines=True)
+        p = subprocess.Popen(args, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             universal_newlines=True)
         output, error = p.communicate()
+        return(output)
     except FileNotFoundError:
         print("curl command was not found")
         exit(2)
@@ -140,19 +143,21 @@ def do_curl(edge_ip, full_url):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Process command line options',
-        usage="""Usage: {} (-f <input_file> | --file=<input file>)
-                (-d <hostname> |--hostname <hostname>)""".format(FILENAME))
+        description='Process command line options')
 
-    parser.add_argument('--hostname', '-d', action='store', required=True,
+    parser.add_argument('--hostname', '-d',  required=True,
                         help='hostname to generate edge maps from region.')
 
-    parser.add_argument('--inputfile', '-f', action='store', required=True,
+    parser.add_argument('--inputfile', '-f',  required=True,
                         help='file with images to prewarm')
 
-    parser.add_argument('--max_edges', '-n', type=int, action='store',
-                        default=20,
+    parser.add_argument('--max_edges', '-n', type=int,  default=20,
                         help='number of edge ip maps for the hostname')
+
+    parser.add_argument("-o", "--output",
+                        type=argparse.FileType('w'), dest='output',
+                        default=sys.stdout,
+                        help='output file')
 
     args = parser.parse_args()
 
@@ -180,4 +185,7 @@ if __name__ == "__main__":
                 ip_address = next(edge_maps_cycle)
                 print("Running curl with Edge address {} and URL: {}".format(
                     ip_address, full_url))
-                do_curl(ip_address, full_url)
+                ret = do_curl(ip_address, full_url)
+                args.output.write(ret)
+
+    args.output.close()
