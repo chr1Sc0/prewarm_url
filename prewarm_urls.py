@@ -141,10 +141,34 @@ class HostnameEdgeMaps(object):
         return (a_records[0])
 
 
-def do_curl(edge_ip, full_url):
+def check_curl_version():
+    try:
+        output = subprocess.check_output(['curl', '-V'],
+                                         universal_newlines=True)
+    except FileNotFoundError:
+        print('curl command not found')
+        return(-1)
+    except subprocess.CalledProcessError:
+        print("Error calling curl")
+        return(-1)
 
-    final_curl = " ".join(
-        [CURL_COMMAND, "--connect-to ::" + edge_ip, full_url])
+    return(output.splitlines()[0].split()[1])
+
+
+def build_curl(curl_version, hostname, edge_ip, url):
+
+    if curl_version >= '7.49.0':
+        final_curl = ' '.join(
+            [CURL_COMMAND, "--connect-to ::" + edge_ip, full_url])
+    else:
+        final_curl = ' '.join(
+            [CURL_COMMAND, '--resolve ' + hostname + ':443:' + edge_ip, url])
+
+    return(final_curl)
+
+
+def run_curl(final_curl):
+
     args = shlex.split(final_curl)
     try:
         p = subprocess.Popen(args, stdout=subprocess.PIPE,
@@ -152,9 +176,9 @@ def do_curl(edge_ip, full_url):
                              universal_newlines=True)
         output, error = p.communicate()
         return(output)
-    except FileNotFoundError:
-        print("curl command was not found")
-        exit(2)
+    except subprocess.CalledProcessError:
+        return("Error executing curl command {}".format(final_curl.strip()))
+        pass
 
 
 if __name__ == "__main__":
@@ -162,20 +186,27 @@ if __name__ == "__main__":
         description='Process command line options')
 
     parser.add_argument('--hostname', '-d',  required=True,
-                        help='hostname to generate edge maps from region.')
+                        help='hostname to generate edge maps from region')
 
     parser.add_argument('--inputfile', '-f',  required=True,
-                        help='file with images to prewarm')
-
-    parser.add_argument('--max_edges', '-n', type=int,  default=20,
-                        help='number of edge ip maps for the hostname')
+                        help='input file with URLs to prewarm')
 
     parser.add_argument("-o", "--output",
                         type=argparse.FileType('w'), dest='output',
                         default=sys.stdout,
                         help='output file')
 
+    parser.add_argument('--max_edges', '-n', type=int,  default=20,
+                        help='number of edge ip maps for the hostname')
+
     args = parser.parse_args()
+
+    curl_version = check_curl_version()
+    if curl_version == -1:
+        exit(1)
+    elif curl_version < '7.21.3':
+        print('curl version not supported. Please install a version >= 7.21.3')
+        exit(2)
 
     edgemaps = HostnameEdgeMaps(args.hostname, args.max_edges)
     edgemaps.generate_geo_edges('nameservers.csv')
@@ -184,9 +215,6 @@ if __name__ == "__main__":
 
     # Declare cycle object from itertools to loop over the edge mapped IPs
     edge_maps_cycle = cycle(edgemaps.get_all_maps())
-
-    # print("Number of CPUs: {}".format(multiprocessing.cpu_count()))
-    # p = multiprocessing.Pool(multiprocessing.cpu_count() - 1)
 
     with open(args.inputfile) as url_file:
         for url_line in url_file:
@@ -199,9 +227,16 @@ if __name__ == "__main__":
                 full_url = "https://" + args.hostname + "/" + fullpath
                 # get next edge mapped IP from all maps
                 ip_address = next(edge_maps_cycle)
+
+                # Debug line to check edge ip and url
                 print("Running curl with Edge address {} and URL: {}".format(
                     ip_address, full_url))
-                ret = do_curl(ip_address, full_url)
+
+                # Prepare final curl command depending on the curl version
+                full_curl_command = build_curl(
+                    curl_version, args.hostname, ip_address, full_url)
+                # Run curl and get the headers and write to the output file
+                ret = run_curl(full_curl_command)
                 args.output.write(ret)
 
     args.output.close()
