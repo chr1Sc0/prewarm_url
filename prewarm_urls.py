@@ -20,8 +20,6 @@ import subprocess
 # import multiprocessing
 
 
-FILENAME = "prewarm_urls.py"
-
 # Name of known public nameservers public CSV file
 DEFAULT_NS_URL = "https://public-dns.info/nameservers.csv"
 
@@ -66,7 +64,8 @@ CURL_COMMAND = 'curl -s -D - -o /dev/null \
                                  akamai-x-get-true-cache-key, \
                                  akamai-x-get-request-id" '
 
-PATH = os.path.dirname(os.path.abspath(__file__))
+_path = os.path.dirname(os.path.abspath(__file__))
+_filename = os.path.basename(__file__)
 
 
 class HostnameEdgeMaps(object):
