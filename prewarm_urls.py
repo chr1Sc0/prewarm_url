@@ -99,7 +99,7 @@ class HostnameEdgeMaps(object):
         else:
             local_csv_file = dns_file_name
 
-        with open(local_csv_file) as csv_file:
+        with open(local_csv_file, encoding='utf8') as csv_file:
             csv_reader = csv.DictReader(csv_file)
             ip_pattern = re.compile(r"""(?:^|\b(?<!\.))(?:1?\d\d?|2[0-4]\d|
                                          25[0-5])(?:\.(?:1?\d\d?|2[0-4]\d|
@@ -209,7 +209,7 @@ if __name__ == "__main__":
         exit(2)
 
     edgemaps = HostnameEdgeMaps(args.hostname, args.max_edges)
-    edgemaps.generate_geo_edges('nameservers.csv')
+    edgemaps.generate_geo_edges()
 
     # print(edgemaps.get_all_maps())
 
