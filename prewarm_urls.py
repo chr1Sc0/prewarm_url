@@ -178,7 +178,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     edgemaps = HostnameEdgeMaps(args.hostname, args.max_edges)
-    edgemaps.generate_geo_edges('nameservers.csv')
+    edgemaps.generate_geo_edges()
 
     # print(edgemaps.get_all_maps())
 
