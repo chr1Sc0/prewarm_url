@@ -3,7 +3,6 @@
 import requests
 import sys
 import os
-# import logging
 import tempfile
 import re
 import argparse
@@ -31,12 +30,31 @@ CSV_COL_IP = "ip"
 CSV_COL_COUNTRY = "country_id"
 
 # ISO Country Codes from EU
-EU_COUNTRIES_ISO = ['AL', 'AD', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ',
-                    'DK', 'EE', 'FO', 'FI', 'FR', 'DE', 'GI', 'GR', 'HU', 'IS',
-                    'IE', 'IM', 'IT', 'RS', 'LV', 'LI', 'LT', 'LU', 'MK', 'MT',
-                    'MD', 'MC', 'ME', 'NL', 'NO', 'PL', 'PT', 'RO', 'RU', 'SM',
-                    'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB', 'VA', 'RS']
+EU_COUNTRIES_ISO = ['AD', 'AL', 'AT', 'AX', 'BA', 'BE', 'BG', 'BY', 'CH', 'CZ',
+                    'DE', 'DK', 'EE', 'ES', 'EU', 'FI', 'FO', 'FR', 'FX', 'GB',
+                    'GG', 'GI', 'GR', 'HR', 'HU', 'IE', 'IM', 'IS', 'IT', 'JE',
+                    'LI', 'LT', 'LU', 'LV', 'MC', 'MD', 'ME', 'MK', 'MT', 'NL',
+                    'NO', 'PL', 'PT', 'RO', 'RS', 'RU', 'SE', 'SI', 'SJ', 'SK',
+                    'SM', 'TR', 'UA', 'VA']
 
+# ISO Country Codes from Americas
+AMX_COUNTRY_ISO = ['AG', 'AI', 'AN', 'AR', 'AW', 'BB', 'BL', 'BM', 'BO', 'BR',
+                   'BS', 'BZ', 'CA', 'CL', 'CO', 'CR', 'CU', 'DM', 'DO', 'EC',
+                   'FK', 'GD', 'GF', 'GL', 'GP', 'GT', 'GY', 'HN', 'HT', 'JM',
+                   'KN', 'KY', 'LC', 'MF', 'MQ', 'MS', 'MX', 'NI', 'PA', 'PE',
+                   'PM', 'PR', 'PY', 'SR', 'SV', 'TC', 'TT', 'US', 'UY', 'VC',
+                   'VE', 'VG', 'VI']
+
+
+# ISO Country Codes Asia Pacific
+AP_COUNTRIES_ISO = ['AE', 'AF', 'AM', 'AP', 'AS', 'AU', 'AZ', 'BD', 'BH', 'BN',
+                    'BT', 'CC', 'CK', 'CN', 'CX', 'CY', 'FJ', 'FM', 'GE', 'GU',
+                    'HK', 'ID', 'IL', 'IN', 'IO', 'IQ', 'IR', 'JO', 'JP', 'KG',
+                    'KH', 'KI', 'KP', 'KR', 'KW', 'KZ', 'LA', 'LB', 'LK', 'MH',
+                    'MM', 'MN', 'MO', 'MP', 'MV', 'MY', 'NC', 'NF', 'NP', 'NR',
+                    'NU', 'NZ', 'OM', 'PF', 'PG', 'PH', 'PK', 'PN', 'PS', 'PW',
+                    'QA', 'SA', 'SB', 'SG', 'SY', 'TH', 'TJ', 'TK', 'TL', 'TM',
+                    'TO', 'TV', 'TW', 'UM', 'UZ', 'VN', 'VU', 'WF', 'WS', 'YE']
 
 CURL_COMMAND = 'curl -s -D - -o /dev/null \
                 --user-agent "akamai_prewarm" \
@@ -92,7 +110,7 @@ class HostnameEdgeMaps(object):
             for row in csv_reader:
                 if (ip_pattern.match(row[CSV_COL_IP]) and
                         (str(row[CSV_COL_COUNTRY]) in EU_COUNTRIES_ISO)):
-                    mapped_ip = get_ip_from_nameserver(
+                    mapped_ip = self.get_ip_from_nameserver(
                         self.hostname, row[CSV_COL_IP])
 
                     if mapped_ip is not None:
@@ -102,27 +120,26 @@ class HostnameEdgeMaps(object):
 
             csv_file.close()
 
+    def get_ip_from_nameserver(self, hostname, dns_ip):
 
-def get_ip_from_nameserver(hostname, dns_ip):
+        a_records = []
+        resolver = Resolver()
+        resolver.nameservers = [dns_ip]
+        resolver.timeout = 1
+        resolver.lifetime = 1
+        try:
+            for rdata in resolver.query(hostname, 'A'):
+                a_records.append(str(rdata))
+        except NoAnswer:
+            return None
+        except NXDOMAIN:
+            return None
+        except NoNameservers:
+            return None
+        except Timeout:
+            return None
 
-    a_records = []
-    resolver = Resolver()
-    resolver.nameservers = [dns_ip]
-    resolver.timeout = 1
-    resolver.lifetime = 1
-    try:
-        for rdata in resolver.query(hostname, 'A'):
-            a_records.append(str(rdata))
-    except NoAnswer:
-        return None
-    except NXDOMAIN:
-        return None
-    except NoNameservers:
-        return None
-    except Timeout:
-        return None
-
-    return (a_records[0])
+        return (a_records[0])
 
 
 def do_curl(edge_ip, full_url):
